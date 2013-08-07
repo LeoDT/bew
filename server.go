@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"encoding/json"
 )
 
 type route struct {
@@ -59,21 +60,50 @@ func (s *Server) Post(r string, handler interface{}) {
 
 func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 	requestPath := r.URL.Path
+	ctx := &Context{Request: r, ResponseWriter: c, Server: s}
 
 	for _, route := range s.routes {
 		if route.r != requestPath {
 			continue
 		} else {
 			var args []reflect.Value
-			args = append(args, reflect.ValueOf(r))
+			args = append(args, reflect.ValueOf(ctx))
 			ret := route.handler.Call(args)
-			content := []byte(ret[0].String())
+
+			if len(ret) < 1{
+				return
+			}
+			
+			ret0 := ret[0]
+
+			var content string
+			if ret0.Kind() == reflect.String {
+				content := []byte(ret[0].String())
+			} else if ret0.Kind() == reflect.Map{
+				content, err := json.Marshal(ret0)
+
+				if err != nil {
+					ctx.Abort(500, "Internal Error")
+					return
+				}
+				content = string(content)
+			}
+			
+			if len(content) < 1 {
+				ctx.Abort(500, "Internal Error")
+				return
+			}
+
 
 			c.Header().Set("Content-Length", strconv.Itoa(len(content)))
 			
 			c.Write(content)
 		}
+
+		return
 	}
+
+	ctx.Abort(404, "Not Found")
 }
 
 
