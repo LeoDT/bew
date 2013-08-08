@@ -1,17 +1,19 @@
-// server and route 
+// server and route
 package bew
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strconv"
-	"encoding/json"
 )
 
 type route struct {
 	r       string
+	regex   *regexp.Regexp
 	method  string
 	handler reflect.Value
 }
@@ -19,6 +21,47 @@ type route struct {
 type Server struct {
 	l      net.Listener
 	routes []route
+}
+
+var rules = map[string]*regexp.Regexp{
+	"int":     regexp.MustCompile("<[^:>]+?:int>"),
+	"path":    regexp.MustCompile("<[^:>]+?:path>"),
+	"default": regexp.MustCompile("<[^:>]+?>"),
+}
+var rule_replacer = map[string]string{
+	"int":     `(\d+)`,
+	"path":    `(.+?)`,
+	"default": `([^/]+?)`,
+}
+
+func (r *route) compileRouteRegex() {
+	route_pattern_string := r.r
+
+	for k, v := range rules {
+		route_pattern_string = v.ReplaceAllString(route_pattern_string, rule_replacer[k])
+	}
+
+	route_pattern_regex := regexp.MustCompile("^" + route_pattern_string + "/?$")
+	r.regex = route_pattern_regex
+}
+
+func (r *route) ParseParams(params []string) (parsed []interface{}) {
+	type_regex := regexp.MustCompile("<[^:]+?:([^:]+?)>|<[^:]+?>")
+
+	type_list := type_regex.FindAllStringSubmatch(r.r, -1)
+	
+	parsed = make([]interface{}, len(params))
+	for i, t := range type_list {
+		switch t[len(t) - 1] {
+		case "int":
+			item, _ := strconv.Atoi(params[i])
+			parsed[i] = item
+		default:
+			parsed[i] = params[i]
+		}
+	}
+	
+	return parsed
 }
 
 func NewServer() (s *Server) {
@@ -44,10 +87,12 @@ func (s *Server) ServeHTTP(c http.ResponseWriter, r *http.Request) {
 	s.route(c, r)
 }
 
-
 // Route related methods
 func (s *Server) addRoute(r string, method string, handler interface{}) {
-	s.routes = append(s.routes, route{r: r, method: method, handler: reflect.ValueOf(handler)})
+	new_route := route{r: r, method: method, handler: reflect.ValueOf(handler)}
+	new_route.compileRouteRegex()
+
+	s.routes = append(s.routes, new_route)
 }
 
 func (s *Server) Get(r string, handler interface{}) {
@@ -58,45 +103,65 @@ func (s *Server) Post(r string, handler interface{}) {
 	s.addRoute(r, "POST", handler)
 }
 
+func matchRoute(r route, path string) (match bool, result []interface{}) {
+	match = r.regex.MatchString(path)
+
+	if match {
+		pattern := r.regex.FindAllStringSubmatch(path, -1)
+
+		result = r.ParseParams(pattern[0][1:])
+	}
+
+	return
+}
+
 func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 	requestPath := r.URL.Path
 	ctx := &Context{Request: r, ResponseWriter: c, Server: s}
 
 	for _, route := range s.routes {
-		if route.r != requestPath {
+		match, result := matchRoute(route, requestPath)
+		if !match {
 			continue
 		} else {
 			var args []reflect.Value
 			args = append(args, reflect.ValueOf(ctx))
+
+			for _, arg := range result {
+				fmt.Println(reflect.TypeOf(arg))
+				args = append(args, reflect.ValueOf(arg))
+			}
+
 			ret := route.handler.Call(args)
 
-			if len(ret) < 1{
+			if len(ret) < 1 {
 				return
 			}
-			
+
 			ret0 := ret[0]
 
-			var content string
+			var content []byte
 			if ret0.Kind() == reflect.String {
-				content := []byte(ret[0].String())
-			} else if ret0.Kind() == reflect.Map{
-				content, err := json.Marshal(ret0)
+				content = []byte(ret0.String())
+			} else if ret0.Kind() == reflect.ValueOf(map[string]interface{}{}).Kind() {
+				// JSON serialize maybe complicated, need more time
+				json_content, err := json.Marshal(ret0)
 
 				if err != nil {
 					ctx.Abort(500, "Internal Error")
 					return
 				}
-				content = string(content)
+
+				content = json_content
 			}
-			
+
 			if len(content) < 1 {
-				ctx.Abort(500, "Internal Error")
+				// ctx.Abort(500, "Internal Error")
 				return
 			}
 
-
 			c.Header().Set("Content-Length", strconv.Itoa(len(content)))
-			
+
 			c.Write(content)
 		}
 
@@ -105,16 +170,3 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 
 	ctx.Abort(404, "Not Found")
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
