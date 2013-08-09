@@ -2,6 +2,7 @@ package bew
 
 import (
 	"net/http"
+	"time"
 )
 
 type Context struct {
@@ -11,7 +12,29 @@ type Context struct {
 }
 
 type Cookie struct {
-	http.Cookie
+	Name     string
+	Value    string
+	Path     string
+	Domain   string
+	Expires  time.Time
+	MaxAge   int
+	Secure   bool
+	HttpOnly bool
+}
+
+func (c *Cookie) ToHttpCookie() (cookie *http.Cookie) {
+	cookie = &http.Cookie{
+		Name:     c.Name,
+		Value:    c.Value,
+		Path:     c.Path,
+		Domain:   c.Domain,
+		Expires:  c.Expires,
+		MaxAge:   c.MaxAge,
+		Secure:   c.Secure,
+		HttpOnly: c.HttpOnly,
+	}
+
+	return
 }
 
 func (ctx *Context) Abort(status int, body string) {
@@ -33,6 +56,20 @@ func (ctx *Context) NotFound() {
 func (ctx *Context) BadRequest() {
 	ctx.ResponseWriter.WriteHeader(400)
 	ctx.ResponseWriter.Write([]byte("Bad Request"))
+}
+
+func (ctx *Context) Cookie(name string) string {
+	cookie, err := ctx.Request.Cookie(name)
+
+	if err != nil {
+		return ""
+	}
+
+	return cookie.Value
+}
+
+func (ctx *Context) SetCookie(cookie *Cookie) {
+	http.SetCookie(ctx.ResponseWriter, cookie.ToHttpCookie())
 }
 
 func Get(route string, handler interface{}) {
