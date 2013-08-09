@@ -1,1 +1,4 @@
-bew is a simple web framework in Go programming language.
+bew
+===
+
+a simple web framework in Go
