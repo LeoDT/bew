@@ -10,6 +10,10 @@ type Context struct {
 	http.ResponseWriter
 }
 
+type Cookie struct {
+	http.Cookie
+}
+
 func (ctx *Context) Abort(status int, body string) {
 	ctx.ResponseWriter.WriteHeader(status)
 	ctx.ResponseWriter.Write([]byte(body))
