@@ -84,6 +84,11 @@ func (s *Server) Run(bind string) {
 }
 
 func (s *Server) ServeHTTP(c http.ResponseWriter, r *http.Request) {
+	if r.RequestURI == "*" {
+		c.Header().Set("Connection", "close")
+		c.WriteHeader(400)
+		return
+	}
 	s.route(c, r)
 }
 
@@ -198,5 +203,5 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx.Abort(404, "Not Found")
+	ctx.NotFound()
 }
