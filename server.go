@@ -143,16 +143,38 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 			var content []byte
 			if ret0.Kind() == reflect.String {
 				content = []byte(ret0.String())
-			} else if ret0.Kind() == reflect.ValueOf(map[string]interface{}{}).Kind() {
-				// JSON serialize maybe complicated, need more time
-				json_content, err := json.Marshal(ret0)
+			} else if ret0.Kind() == reflect.Map {
+				json_content := make(map[string]interface{})
+				for _, k := range ret0.MapKeys() {
+					json_content[k.String()] = ret0.MapIndex(k).Interface()
+				}
+
+				json_string, err := json.Marshal(json_content)
 
 				if err != nil {
 					ctx.Abort(500, "Internal Error")
 					return
 				}
 
-				content = json_content
+				content = json_string
+			} else if ret0.Kind() == reflect.Struct {
+				json_content := make(map[string]interface{})
+				type_ret := ret0.Type()
+				for i := 0; i<ret0.NumField(); i++ {
+					f := ret0.Field(i)
+					if f.CanInterface(){
+						// Only jsonify the exported field
+						json_content[type_ret.Field(i).Name] = f.Interface()
+					}
+				}
+
+				json_string, err := json.Marshal(json_content)
+
+				if err != nil {
+					ctx.Abort(500, "Internal Error")
+					return
+				}
+				content = json_string
 			}
 
 			if len(content) < 1 {
