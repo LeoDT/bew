@@ -21,8 +21,27 @@ func (ctx *Context) Redirect(status int, url string){
 	ctx.ResponseWriter.Write([]byte("Response to: " + url))
 }
 
+func (ctx *Context) NotFound(){
+	ctx.ResponseWriter.WriteHeader(404)
+	ctx.ResponseWriter.Write([]byte("Not Found"))
+}
+
+func (ctx *Context) BadRequest(){
+	ctx.ResponseWriter.WriteHeader(400)
+	ctx.ResponseWriter.Write([]byte("Bad Request"))
+}
+
 func Get(route string, handler interface{}){
 	server.Get(route, handler)
+}
+func Post(route string, handler interface{}){
+	server.Post(route, handler)
+}
+func Put(route string, handler interface{}){
+	server.Put(route, handler)
+}
+func Delete(route string, handler interface{}){
+	server.Delete(route, handler)
 }
 
 func Run(bind string){

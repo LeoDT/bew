@@ -103,6 +103,14 @@ func (s *Server) Post(r string, handler interface{}) {
 	s.addRoute(r, "POST", handler)
 }
 
+func (s *Server) Put(r string, handler interface{}) {
+	s.addRoute(r, "PUT", handler)
+}
+
+func (s *Server) Delete(r string, handler interface{}) {
+	s.addRoute(r, "DELETE", handler)
+}
+
 func matchRoute(r route, path string) (match bool, result []interface{}) {
 	match = r.regex.MatchString(path)
 
