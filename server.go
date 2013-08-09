@@ -49,10 +49,10 @@ func (r *route) ParseParams(params []string) (parsed []interface{}) {
 	type_regex := regexp.MustCompile("<[^:]+?:([^:]+?)>|<[^:]+?>")
 
 	type_list := type_regex.FindAllStringSubmatch(r.r, -1)
-	
+
 	parsed = make([]interface{}, len(params))
 	for i, t := range type_list {
-		switch t[len(t) - 1] {
+		switch t[len(t)-1] {
 		case "int":
 			item, _ := strconv.Atoi(params[i])
 			parsed[i] = item
@@ -60,7 +60,7 @@ func (r *route) ParseParams(params []string) (parsed []interface{}) {
 			parsed[i] = params[i]
 		}
 	}
-	
+
 	return parsed
 }
 
@@ -168,9 +168,9 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 			} else if ret0.Kind() == reflect.Struct {
 				json_content := make(map[string]interface{})
 				type_ret := ret0.Type()
-				for i := 0; i<ret0.NumField(); i++ {
+				for i := 0; i < ret0.NumField(); i++ {
 					f := ret0.Field(i)
-					if f.CanInterface(){
+					if f.CanInterface() {
 						// Only jsonify the exported field
 						json_content[type_ret.Field(i).Name] = f.Interface()
 					}
