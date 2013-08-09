@@ -141,7 +141,6 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 			args = append(args, reflect.ValueOf(ctx))
 
 			for _, arg := range result {
-				fmt.Println(reflect.TypeOf(arg))
 				args = append(args, reflect.ValueOf(arg))
 			}
 
