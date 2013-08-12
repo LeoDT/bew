@@ -128,6 +128,31 @@ func matchRoute(r route, path string) (match bool, result []interface{}) {
 	return
 }
 
+var contextType reflect.Type
+
+func init() {
+	contextType = reflect.TypeOf(Context{})
+}
+
+func requireContext(handler *reflect.Value) bool {
+	handler_type := handler.Type()
+
+	if handler_type.NumIn() == 0 {
+		return false
+	}
+
+	arg0 := handler_type.In(0)
+	if arg0.Kind() != reflect.Ptr {
+		return false
+	}
+
+	if arg0.Elem() == contextType {
+		return true
+	}
+
+	return false
+}
+
 func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 	requestPath := r.URL.Path
 	ctx := &Context{Request: r, ResponseWriter: c, Server: s}
@@ -138,7 +163,10 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 			continue
 		} else {
 			var args []reflect.Value
-			args = append(args, reflect.ValueOf(ctx))
+
+			if requireContext(&route.handler) {
+				args = append(args, reflect.ValueOf(ctx))
+			}
 
 			for _, arg := range result {
 				args = append(args, reflect.ValueOf(arg))

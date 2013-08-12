@@ -7,6 +7,6 @@ TODO
 ===
 
 - ~~get & set cookie~~
-- make context optional
+- ~~make context optional~~
 - easy access to request data
 - easy way to return a templated response
