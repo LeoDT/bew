@@ -3,14 +3,15 @@ package bew
 import (
 	"net/http"
 	"time"
+	"github.com/bitly/go-simplejson"
+	"net/url"
 )
 
 type Context struct {
 	Request *http.Request
 	Server  *Server
-	Params BaseDict
-	Json JsonDict
-	Files FileDict
+	Params url.Values
+	Json *simplejson.Json
 	http.ResponseWriter
 }
 
@@ -44,10 +45,19 @@ func (ctx *Context) Init() {
 	r := ctx.Request
 
 	if r.Header.Get("Content-Type") == "application/json" {
-		json := JsonDict{}
+		body := make([]byte, r.ContentLength)
+		_, err := r.Body.Read(body)
 
-		json.Parse(r)
-		ctx.Json = json
+		if err != nil {
+			return
+		}
+		
+		j, err := simplejson.NewJson(body)
+		if err != nil {
+			return
+		}
+
+		ctx.Json = j
 	} else {
 		ctx.Params = r.URL.Query()
 		r.ParseForm()

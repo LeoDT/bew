@@ -4,6 +4,7 @@ package bew
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/bitly/go-simplejson"
 	"net"
 	"net/http"
 	"reflect"
@@ -217,8 +218,19 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				ctx.Header().Set("Content-Type", "application/json")
 				content = json_string
+
+				ctx.Header().Set("Content-Type", "application/json")
+			} else if ret0.Type() == reflect.TypeOf(&simplejson.Json{}) {
+				encoded := ret0.MethodByName("Encode").Call(nil)
+
+				if encoded[1].Interface() != nil {
+					ctx.Abort(500, "Internal Error")
+					return
+				}
+
+				content = encoded[0].Bytes()
+				ctx.Header().Set("Content-Type", "application/json")
 			}
 
 			if len(content) < 1 {
