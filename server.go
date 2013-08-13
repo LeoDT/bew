@@ -156,6 +156,7 @@ func requireContext(handler *reflect.Value) bool {
 func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 	requestPath := r.URL.Path
 	ctx := &Context{Request: r, ResponseWriter: c, Server: s}
+	ctx.Init()
 
 	for _, route := range s.routes {
 		match, result := matchRoute(route, requestPath)
@@ -196,6 +197,7 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 					return
 				}
 
+				ctx.Header().Set("Content-Type", "application/json")
 				content = json_string
 			} else if ret0.Kind() == reflect.Struct {
 				json_content := make(map[string]interface{})
@@ -214,6 +216,8 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 					ctx.Abort(500, "Internal Error")
 					return
 				}
+
+				ctx.Header().Set("Content-Type", "application/json")
 				content = json_string
 			}
 
@@ -222,9 +226,9 @@ func (s *Server) route(c http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			c.Header().Set("Content-Length", strconv.Itoa(len(content)))
+			ctx.Header().Set("Content-Length", strconv.Itoa(len(content)))
 
-			c.Write(content)
+			ctx.Write(content)
 		}
 
 		return

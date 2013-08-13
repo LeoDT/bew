@@ -8,6 +8,9 @@ import (
 type Context struct {
 	Request *http.Request
 	Server  *Server
+	Params BaseDict
+	Json JsonDict
+	Files FileDict
 	http.ResponseWriter
 }
 
@@ -35,6 +38,23 @@ func (c *Cookie) ToHttpCookie() (cookie *http.Cookie) {
 	}
 
 	return
+}
+
+func (ctx *Context) Init() {
+	r := ctx.Request
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		json := JsonDict{}
+
+		json.Parse(r)
+		ctx.Json = json
+	} else {
+		ctx.Params = r.URL.Query()
+		r.ParseForm()
+		for k, v := range r.Form {
+			ctx.Params.Set(k, v[0])
+		}
+	}
 }
 
 func (ctx *Context) Abort(status int, body string) {
